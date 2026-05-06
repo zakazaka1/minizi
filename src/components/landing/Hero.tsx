@@ -19,7 +19,15 @@ export function Hero() {
         alt=""
         width={600}
         height={400}
-        className="absolute -right-10 bottom-0 w-[420px] opacity-70 hidden lg:block pointer-events-none select-none"
+        className="absolute right-0 bottom-0 w-[360px] opacity-50 hidden lg:block pointer-events-none select-none"
+        style={{
+          // Soft radial fade so the illustration blends into the section
+          // edges instead of being clipped to a hard rectangle.
+          maskImage:
+            "radial-gradient(ellipse at 30% 70%, black 35%, transparent 80%)",
+          WebkitMaskImage:
+            "radial-gradient(ellipse at 30% 70%, black 35%, transparent 80%)",
+        }}
       />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 sm:py-20 grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-10 lg:gap-12 items-center">

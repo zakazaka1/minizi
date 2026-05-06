@@ -13,6 +13,12 @@ export function CTABand() {
             width={500}
             height={300}
             className="absolute inset-y-0 right-0 h-full w-auto opacity-30 pointer-events-none"
+            style={{
+              maskImage:
+                "radial-gradient(ellipse at 70% 50%, black 30%, transparent 75%)",
+              WebkitMaskImage:
+                "radial-gradient(ellipse at 70% 50%, black 30%, transparent 75%)",
+            }}
           />
           <div className="relative flex-1">
             <h3 className="text-2xl sm:text-3xl font-display font-medium tracking-tight">

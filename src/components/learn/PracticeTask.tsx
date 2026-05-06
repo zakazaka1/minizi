@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/cn";
-import { CharRecord, meaningRu } from "@/lib/characters";
+import {
+  CharRecord,
+  ALL_CHARACTERS,
+  meaningShort,
+} from "@/lib/characters";
 import { Check, X } from "lucide-react";
 
 type TaskKind = "h2m" | "m2h" | "audio";
@@ -52,9 +56,25 @@ function shuffle<T>(arr: T[], seedKey: string): T[] {
 export function PracticeTask({ target, pool, kind, onDone }: Props) {
   // Pick distractors by ranked frequency proximity rather than random sampling
   // so the choice is pure / reproducible per target.
-  const candidates = pool.filter(
-    (c) => c.hanzi !== target.hanzi && meaningRu(c) && c.pinyin
-  );
+  const usable = (c: CharRecord) =>
+    c.hanzi !== target.hanzi && !!c.pinyin && !!meaningShort(c);
+
+  const buildPool = () => {
+    const local = pool.filter(usable);
+    if (local.length >= 12) return local;
+    // Fall back to the whole HSK character set so we always have enough
+    // distractors regardless of how small the user's local pool is.
+    const seen = new Set(local.map((c) => c.hanzi));
+    for (const c of ALL_CHARACTERS) {
+      if (!usable(c)) continue;
+      if (seen.has(c.hanzi)) continue;
+      local.push(c);
+      seen.add(c.hanzi);
+      if (local.length >= 50) break;
+    }
+    return local;
+  };
+  const candidates = buildPool();
   const sortedByDist = candidates
     .slice()
     .sort((a, b) => Math.abs(a.freq - target.freq) - Math.abs(b.freq - target.freq))
@@ -104,7 +124,7 @@ export function PracticeTask({ target, pool, kind, onDone }: Props) {
             <div className="text-sm text-[var(--foreground-muted)]">
               Какой иероглиф соответствует значению?
             </div>
-            <div className="text-3xl font-medium mt-3">{meaningRu(target)}</div>
+            <div className="text-3xl font-medium mt-3">{meaningShort(target)}</div>
             <div className="pinyin text-[var(--foreground-muted)] mt-1">
               {target.pinyin}
             </div>
@@ -123,7 +143,7 @@ export function PracticeTask({ target, pool, kind, onDone }: Props) {
   })();
 
   const renderOption = (c: CharRecord) => {
-    const showAs = kind === "m2h" ? c.hanzi : meaningRu(c);
+    const showAs = kind === "m2h" ? c.hanzi : meaningShort(c);
     const sub = kind === "m2h" ? c.pinyin : c.hanzi;
     const state =
       picked === c.hanzi
@@ -168,7 +188,7 @@ export function PracticeTask({ target, pool, kind, onDone }: Props) {
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-md">
       <div className="text-center">{prompt}</div>
-      <div className="grid grid-cols-1 gap-2.5 w-full">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full">
         {options.map(renderOption)}
       </div>
       {attempts > 0 && !isCorrect && (

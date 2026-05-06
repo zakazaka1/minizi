@@ -13,6 +13,13 @@ interface Props {
   onReady?: (totalStrokes: number) => void;
 }
 
+interface WriterAPI {
+  animateCharacter: (opts?: { onComplete?: () => void }) => Promise<void>;
+  pauseAnimation: () => void;
+  resumeAnimation: () => void;
+  getCharacterData: () => Promise<{ strokes: unknown[] }>;
+}
+
 export function StrokeAnimation({
   hanzi,
   size = 300,
@@ -21,8 +28,9 @@ export function StrokeAnimation({
   onReady,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const writerRef = useRef<unknown>(null);
+  const writerRef = useRef<WriterAPI | null>(null);
   const [playing, setPlaying] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -43,11 +51,14 @@ export function StrokeAnimation({
           showOutline: true,
           strokeAnimationSpeed: 1.1,
           delayBetweenStrokes: 220,
+          // Single stroke colour — never auto-recolour radicals, that's
+          // confusing without explanation. Selection-based highlighting
+          // happens at the parent level via the <Graphemes /> component.
           strokeColor: "#2a2c28",
+          radicalColor: "#2a2c28",
           outlineColor: "#dad7cf",
-          radicalColor: "#2e7d4f",
           drawingColor: "#c43a3a",
-          // Tells the writer to fetch from chanind/hanzi-writer-data CDN
+          // Tells the writer to fetch from chanind/hanzi-writer-data CDN.
           charDataLoader(c, onComplete) {
             fetch(
               `https://cdn.jsdelivr.net/npm/hanzi-writer-data@latest/${encodeURIComponent(
@@ -58,7 +69,7 @@ export function StrokeAnimation({
               .then((d) => onComplete(d))
               .catch(() => onComplete(null as unknown as never));
           },
-        });
+        }) as unknown as WriterAPI;
         writerRef.current = writer;
         writer
           .getCharacterData()
@@ -68,8 +79,16 @@ export function StrokeAnimation({
             if (autoplay) {
               setPlaying(true);
               writer
-                .animateCharacter({ onComplete: () => setPlaying(false) })
-                .catch(() => setPlaying(false));
+                .animateCharacter({
+                  onComplete: () => {
+                    setPlaying(false);
+                    setPaused(false);
+                  },
+                })
+                .catch(() => {
+                  setPlaying(false);
+                  setPaused(false);
+                });
             }
           })
           .catch(() => setError("Не удалось загрузить данные иероглифа."));
@@ -85,18 +104,37 @@ export function StrokeAnimation({
   }, [hanzi, size, autoplay, onReady]);
 
   const replay = () => {
-    const writer = writerRef.current as
-      | {
-          animateCharacter: (opts?: {
-            onComplete?: () => void;
-          }) => Promise<void>;
-        }
-      | null;
+    const writer = writerRef.current;
     if (!writer) return;
+    setPaused(false);
     setPlaying(true);
     writer
-      .animateCharacter({ onComplete: () => setPlaying(false) })
-      .catch(() => setPlaying(false));
+      .animateCharacter({
+        onComplete: () => {
+          setPlaying(false);
+          setPaused(false);
+        },
+      })
+      .catch(() => {
+        setPlaying(false);
+        setPaused(false);
+      });
+  };
+
+  const togglePause = () => {
+    const writer = writerRef.current;
+    if (!writer) return;
+    if (!playing) {
+      replay();
+      return;
+    }
+    if (paused) {
+      writer.resumeAnimation();
+      setPaused(false);
+    } else {
+      writer.pauseAnimation();
+      setPaused(true);
+    }
   };
 
   return (
@@ -107,7 +145,7 @@ export function StrokeAnimation({
       >
         <div ref={containerRef} aria-label={`Анимация порядка черт: ${hanzi}`} />
         {error && (
-          <div className="absolute inset-0 flex items-center justify-center text-sm text-[var(--foreground-muted)]">
+          <div className="absolute inset-0 flex items-center justify-center text-sm text-[var(--foreground-muted)] px-4 text-center">
             {error}
           </div>
         )}
@@ -115,21 +153,39 @@ export function StrokeAnimation({
       <div className="flex items-center gap-2">
         <button
           type="button"
-          onClick={replay}
-          disabled={playing}
-          className="btn btn-secondary h-10 w-10 p-0"
-          aria-label="Повторить"
+          onClick={togglePause}
+          disabled={!!error}
+          className="btn btn-primary h-10 px-4"
+          aria-label={
+            !playing
+              ? "Воспроизвести"
+              : paused
+                ? "Продолжить"
+                : "Пауза"
+          }
         >
-          <RotateCcw size={16} />
+          {!playing ? (
+            <>
+              <Play size={14} /> Смотреть
+            </>
+          ) : paused ? (
+            <>
+              <Play size={14} /> Продолжить
+            </>
+          ) : (
+            <>
+              <Pause size={14} /> Пауза
+            </>
+          )}
         </button>
         <button
           type="button"
           onClick={replay}
-          disabled={playing}
-          className="btn btn-primary h-10 w-10 p-0"
-          aria-label={playing ? "Пауза" : "Воспроизвести"}
+          disabled={!!error}
+          className="btn btn-secondary h-10 px-4"
+          aria-label="Заново"
         >
-          {playing ? <Pause size={16} /> : <Play size={16} />}
+          <RotateCcw size={14} /> Заново
         </button>
       </div>
     </div>

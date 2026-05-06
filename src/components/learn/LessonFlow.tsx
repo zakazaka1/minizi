@@ -6,6 +6,7 @@ import { useProgress } from "@/store/progress";
 import { StrokeAnimation } from "./StrokeAnimation";
 import { WritingQuiz } from "./WritingQuiz";
 import { PracticeTask } from "./PracticeTask";
+import { Graphemes } from "./Graphemes";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Panda } from "@/components/ui/Panda";
@@ -117,6 +118,9 @@ export function LessonFlow({ lesson, characters, pool, onExit }: Props) {
               </div>
             )}
           <div className="ink-divider w-2/3 my-2" />
+          {(characters[step.charIdx].components?.length ?? 0) > 0 && (
+            <Graphemes char={characters[step.charIdx]} />
+          )}
           <Button onClick={next} size="lg">
             Дальше <ArrowRight size={16} />
           </Button>

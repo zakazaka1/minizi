@@ -10,6 +10,10 @@ export interface CharRecord {
   meaningsRu: string[];
   meaningsEn: string[];
   hasStrokes: boolean;
+  decomposition?: string;
+  components?: string[];
+  radical?: string;
+  etymology?: string;
 }
 
 export interface Lesson {
@@ -42,6 +46,22 @@ export function getLesson(id: string): Lesson | undefined {
 export function meaningRu(c: CharRecord): string {
   if (c.meaningPrimary) return c.meaningPrimary;
   return c.meaningsEn[0] ?? "";
+}
+
+/**
+ * A short, single-clause meaning suitable for buttons and lists. CEDICT defs
+ * often contain several semicolon-separated clauses or parenthetical notes,
+ * which look noisy as multiple-choice options.
+ */
+export function meaningShort(c: CharRecord): string {
+  const raw = meaningRu(c);
+  if (!raw) return "";
+  // Strip leading parenthetical qualifiers like "(sentence-final particle) X"
+  const stripped = raw.replace(/^\([^)]*\)\s*/u, "").trim() || raw;
+  // Cut at first semicolon / slash / comma — keep the first sense only.
+  const m = stripped.split(/[;／/]/, 1)[0];
+  // Cap length so options stay tidy.
+  return m.length > 60 ? m.slice(0, 57).trimEnd() + "…" : m;
 }
 
 /** Returns all chars in a given HSK level. */

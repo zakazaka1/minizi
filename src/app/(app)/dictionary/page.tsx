@@ -1,12 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ALL_CHARACTERS, meaningRu, type CharRecord } from "@/lib/characters";
+import {
+  ALL_CHARACTERS,
+  meaningRu,
+  meaningShort,
+  type CharRecord,
+} from "@/lib/characters";
 import { useProgress } from "@/store/progress";
 import { Card } from "@/components/ui/Card";
 import { Star, Search, Volume2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { StrokeAnimation } from "@/components/learn/StrokeAnimation";
+import { Graphemes } from "@/components/learn/Graphemes";
 
 const FILTERS: { key: string; label: string; level?: number }[] = [
   { key: "all", label: "Все" },
@@ -118,11 +124,17 @@ export default function DictionaryPage() {
                 )}
               >
                 <span className="hanzi text-3xl shrink-0">{c.hanzi}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="pinyin text-[var(--foreground-muted)] text-sm">
-                    {c.pinyin}
+                <div className="flex-1 min-w-0 grid grid-cols-[7ch_1fr] items-baseline gap-x-3">
+                  <div className="pinyin text-[var(--foreground-muted)] text-sm tabular-nums">
+                    {c.pinyin || "—"}
                   </div>
-                  <div className="text-sm truncate">{meaningRu(c)}</div>
+                  <div className="text-sm truncate">
+                    {meaningShort(c) || (
+                      <span className="text-[var(--foreground-soft)] italic">
+                        нет перевода
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <span className="text-[10px] uppercase tracking-wider text-[var(--foreground-soft)] mr-2">
                   HSK {c.level}
@@ -182,6 +194,9 @@ export default function DictionaryPage() {
                     <div className="text-xs text-[var(--foreground-muted)] text-center">
                       {picked.meaningsEn.slice(0, 4).join(" · ")}
                     </div>
+                  )}
+                  {(picked.components?.length ?? 0) > 0 && (
+                    <Graphemes char={picked} />
                   )}
                 </div>
               ) : (

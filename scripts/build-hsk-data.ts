@@ -216,7 +216,8 @@ interface CedictEntry {
 function parseCedict(): Map<string, CedictEntry> {
   const txt = fs.readFileSync(CEDICT_PATH, "utf8");
   const map = new Map<string, CedictEntry>();
-  for (const line of txt.split("\n")) {
+  for (const rawLine of txt.split("\n")) {
+    const line = rawLine.replace(/\r$/, "");
     if (!line || line.startsWith("#")) continue;
     // Format: TRAD SIMP [pinyin] /def1/def2/.../
     const m = line.match(/^(\S+) (\S+) \[([^\]]+)\] \/(.+)\/$/);
@@ -290,6 +291,60 @@ interface CharRecord {
   meaningsRu: string[];
   meaningsEn: string[];
   hasStrokes: boolean;
+  /** Decomposition string from MakeMeAHanzi, e.g. "⿱爫友" for 爱. */
+  decomposition?: string;
+  /** Visible component characters extracted from the decomposition. */
+  components?: string[];
+  /** Primary radical, when known. */
+  radical?: string;
+  /** Free-text etymology hint (when MakeMeAHanzi has one). */
+  etymology?: string;
+}
+
+interface MmahEntry {
+  character: string;
+  decomposition?: string;
+  radical?: string;
+  etymology?: { type?: string; hint?: string; phonetic?: string; semantic?: string };
+}
+
+function parseMmahDictionary(): Map<string, MmahEntry> {
+  const map = new Map<string, MmahEntry>();
+  const p = path.join(DATA_ROOT, "makemeahanzi", "dictionary.txt");
+  if (!fs.existsSync(p)) return map;
+  for (const rawLine of fs.readFileSync(p, "utf8").split("\n")) {
+    const line = rawLine.replace(/\r$/, "").trim();
+    if (!line) continue;
+    try {
+      const entry = JSON.parse(line) as MmahEntry;
+      if (entry.character) map.set(entry.character, entry);
+    } catch {
+      // skip malformed lines
+    }
+  }
+  return map;
+}
+
+/** Pull the visible CJK characters out of a decomposition string. */
+function extractComponents(decomp: string | undefined): string[] {
+  if (!decomp) return [];
+  const out: string[] = [];
+  for (const ch of decomp) {
+    const code = ch.codePointAt(0) ?? 0;
+    // Decomposition operators live in the IDS area U+2FF0..U+2FFF; "?" is unknown.
+    if (code >= 0x2ff0 && code <= 0x2fff) continue;
+    if (ch === "?" || ch === "？") continue;
+    // Only keep CJK ideographs / radicals
+    const isCjk =
+      (code >= 0x3400 && code <= 0x4dbf) ||
+      (code >= 0x4e00 && code <= 0x9fff) ||
+      (code >= 0xf900 && code <= 0xfaff) ||
+      (code >= 0x20000 && code <= 0x2ffff) ||
+      (code >= 0x2e80 && code <= 0x2eff) || // CJK Radicals Supplement
+      (code >= 0x2f00 && code <= 0x2fdf); // Kangxi Radicals
+    if (isCjk) out.push(ch);
+  }
+  return out;
 }
 
 function buildCharacters(): CharRecord[] {
@@ -298,6 +353,7 @@ function buildCharacters(): CharRecord[] {
   lines.shift(); // header
 
   const cedict = parseCedict();
+  const mmah = parseMmahDictionary();
   const chars: CharRecord[] = [];
 
   for (const line of lines) {
@@ -327,6 +383,12 @@ function buildCharacters(): CharRecord[] {
       hasStrokes = false;
     }
 
+    const mm = mmah.get(hanzi);
+    const decomposition = mm?.decomposition;
+    const components = extractComponents(decomposition).filter((c) => c !== hanzi);
+    const radical = mm?.radical && mm.radical !== "?" ? mm.radical : undefined;
+    const etymology = mm?.etymology?.hint;
+
     chars.push({
       hanzi,
       pinyin,
@@ -336,6 +398,10 @@ function buildCharacters(): CharRecord[] {
       meaningsRu,
       meaningsEn,
       hasStrokes,
+      ...(decomposition ? { decomposition } : {}),
+      ...(components.length ? { components } : {}),
+      ...(radical ? { radical } : {}),
+      ...(etymology ? { etymology } : {}),
     });
   }
   return chars;
