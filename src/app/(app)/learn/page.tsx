@@ -1,256 +1,311 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useState } from "react";
 import { HSK1_LESSONS, type Lesson } from "@/lib/characters";
 import { useProgress } from "@/store/progress";
-import { Card } from "@/components/ui/Card";
+import { useMounted } from "@/lib/useMounted";
 import { Panda } from "@/components/ui/Panda";
 import { ProgressBar } from "@/components/ui/Progress";
-import { ArrowRight, Lock, Check, Play, Sparkles } from "lucide-react";
+import { ArrowRight, Lock, Check, ChevronRight, BookOpen } from "lucide-react";
 import { cn } from "@/lib/cn";
 
-/**
- * Theme presentation order + visual accents. Order here drives the order
- * sections appear on the page; lessons that don't have a matching theme
- * are bucketed at the end.
- */
-const THEME_ORDER: { name: string; accent: string; emoji: string }[] = [
-  { name: "Основы общения", accent: "bg-[#f6efe0] text-[#7a5a1f]", emoji: "💬" },
-  { name: "Числа и счёт", accent: "bg-[#e8f1ea] text-[#2e6b3a]", emoji: "🔢" },
-  { name: "Люди и семья", accent: "bg-[#f3e7ed] text-[#7a3a55]", emoji: "👪" },
-  { name: "Время и место", accent: "bg-[#e6eef5] text-[#2c5277]", emoji: "🧭" },
-  { name: "Действия", accent: "bg-[#f0eaf6] text-[#5a3d83]", emoji: "🏃" },
-  { name: "Быт", accent: "bg-[#f5ece1] text-[#7a4d1e]", emoji: "🍵" },
-  { name: "Описание", accent: "bg-[#eaf2f0] text-[#2a5f55]", emoji: "🎨" },
-  { name: "Закрепление лексики", accent: "bg-[#ece9e3] text-[#4a4639]", emoji: "📚" },
-];
+const LEVELS = [1, 2, 3, 4, 5, 6, 7] as const;
+const CHARS_PER_LESSON = 5;
+const HSK1_TOTAL_CHARS = HSK1_LESSONS.reduce(
+  (s, l) => s + l.characters.length,
+  0
+);
 
 export default function LearnPage() {
+  const [level, setLevel] = useState<number>(1);
   const completed = useProgress((s) => s.completedLessons);
-  const totalLessons = HSK1_LESSONS.length;
-  const completedCount = completed.length;
-  const nextLesson =
-    HSK1_LESSONS.find((l) => !completed.includes(l.id)) ?? HSK1_LESSONS[0];
+  const mounted = useMounted();
 
-  /** Group lessons by theme, preserving lesson order within each group. */
-  const grouped = useMemo(() => {
-    const map = new Map<string, Lesson[]>();
-    for (const lesson of HSK1_LESSONS) {
-      const theme = lesson.theme ?? "Закрепление лексики";
-      const arr = map.get(theme) ?? [];
-      arr.push(lesson);
-      map.set(theme, arr);
-    }
-    const knownThemes = new Set(THEME_ORDER.map((t) => t.name));
-    const ordered: { name: string; lessons: Lesson[]; accent: string; emoji: string }[] = [];
-    for (const t of THEME_ORDER) {
-      const lessons = map.get(t.name);
-      if (lessons) ordered.push({ name: t.name, lessons, accent: t.accent, emoji: t.emoji });
-    }
-    for (const [name, lessons] of map) {
-      if (!knownThemes.has(name)) {
-        ordered.push({ name, lessons, accent: "bg-[#ece9e3] text-[#4a4639]", emoji: "📚" });
-      }
-    }
-    return ordered;
-  }, []);
+  const completedCount = mounted ? completed.length : 0;
+  const completedCharsCount = mounted ? completedCount * CHARS_PER_LESSON : 0;
+  const totalLessons = HSK1_LESSONS.length;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-8 py-8 sm:py-12">
+    <div className="max-w-4xl mx-auto px-4 sm:px-8 py-6 sm:py-10">
       {/* Page header */}
-      <header className="flex items-end justify-between gap-6 mb-8">
-        <div className="min-w-0">
-          <div className="text-xs uppercase tracking-[0.2em] text-[var(--foreground-soft)] mb-2">
-            Изучение · HSK 1
-          </div>
+      <header className="flex items-start justify-between gap-4 mb-6 sm:mb-8 min-h-[120px]">
+        <div className="flex-1 min-w-0 pt-2">
           <h1 className="text-3xl sm:text-4xl font-display font-medium leading-tight">
-            От первой черты до уверенного письма
+            HSK {level} · Уроки
           </h1>
-          <p className="text-[var(--foreground-muted)] mt-2 max-w-xl">
-            300 иероглифов HSK 1, разбитых на короткие уроки по 5. Урок —
-            показ значения, порядок черт, письмо по образцу и закрепление.
+          <p className="text-[var(--foreground-muted)] mt-2 max-w-md leading-snug">
+            Изучи {HSK1_TOTAL_CHARS} иероглифов и заложи фундамент китайского
+            языка
           </p>
         </div>
-        <div className="hidden md:block shrink-0">
-          <Panda mood="learning" size={140} />
+        <div className="hidden sm:block shrink-0 -mt-2 -mr-2">
+          <Panda mood="learning" size={160} priority />
         </div>
       </header>
 
-      {/* Continue card */}
-      <Card className="p-6 sm:p-7 mb-10 flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-6">
-        <div className="flex flex-col items-center sm:items-stretch sm:flex-row gap-5 sm:gap-6 flex-1 min-w-0">
-          <div className="flex items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--green-soft)] to-[#e8f1ea] border border-[var(--border)] shrink-0 w-[120px] h-[120px] sm:w-[140px] sm:h-[140px]">
-            <span className="hanzi text-5xl sm:text-6xl text-[var(--green-deep)] tracking-tight">
-              {nextLesson.characters[0]}
+      {/* Progress card */}
+      <div className="card p-5 sm:p-6 mb-6 sm:mb-8 grid grid-cols-1 sm:grid-cols-3 gap-5 sm:gap-6">
+        <div className="min-w-0">
+          <div className="text-xs uppercase tracking-[0.18em] text-[var(--foreground-soft)] mb-2">
+            Ваш прогресс
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span className="text-3xl sm:text-4xl font-display font-medium text-[var(--green-deep)] tabular-nums">
+              {completedCharsCount}
+            </span>
+            <span className="text-lg text-[var(--foreground-muted)] tabular-nums">
+              / {HSK1_TOTAL_CHARS}
             </span>
           </div>
-          <div className="flex-1 min-w-0 text-center sm:text-left">
-            <div className="inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.2em] text-[var(--green-deep)] mb-1">
-              <Sparkles size={12} /> Продолжайте
-            </div>
-            <div className="text-xl sm:text-2xl font-display font-medium leading-snug">
-              Урок {nextLesson.index + 1}
-              {nextLesson.title ? ` · ${nextLesson.title}` : ""}
-            </div>
-            <div className="hanzi text-2xl tracking-wider mt-1 text-[var(--foreground)]">
-              {nextLesson.characters.join(" ")}
-            </div>
-            <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-              <ProgressBar
-                value={completedCount}
-                max={totalLessons}
-                className="max-w-xs w-full"
-              />
-              <span className="text-xs text-[var(--foreground-muted)] tabular-nums whitespace-nowrap">
-                {completedCount} / {totalLessons} уроков
-              </span>
-            </div>
+          <ProgressBar
+            value={completedCharsCount}
+            max={HSK1_TOTAL_CHARS}
+            className="mt-3"
+          />
+        </div>
+        <div className="sm:border-l sm:border-[var(--border)] sm:pl-6">
+          <div className="text-xs uppercase tracking-[0.18em] text-[var(--foreground-soft)] mb-2">
+            Уроков пройдено
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span className="text-3xl sm:text-4xl font-display font-medium text-[var(--green-deep)] tabular-nums">
+              {completedCount}
+            </span>
+            <span className="text-lg text-[var(--foreground-muted)] tabular-nums">
+              / {totalLessons}
+            </span>
           </div>
         </div>
-        <Link
-          href={`/learn/${nextLesson.id}`}
-          className="btn btn-primary self-stretch sm:self-auto whitespace-nowrap"
-        >
-          Начать урок <ArrowRight size={16} />
-        </Link>
-      </Card>
+        <div className="sm:border-l sm:border-[var(--border)] sm:pl-6">
+          <div className="text-xs uppercase tracking-[0.18em] text-[var(--foreground-soft)] mb-2">
+            Иероглифов изучено
+          </div>
+          <div className="text-3xl sm:text-4xl font-display font-medium text-[var(--green-deep)] tabular-nums">
+            {completedCharsCount}
+          </div>
+        </div>
+      </div>
 
-      {/* Themed sections */}
-      <div className="space-y-10">
-        {grouped.map((section) => (
-          <section key={section.name}>
-            <div className="flex items-baseline justify-between gap-3 mb-4">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span
-                  className={cn(
-                    "inline-flex items-center justify-center rounded-lg w-9 h-9 text-lg shrink-0",
-                    section.accent
-                  )}
-                >
-                  {section.emoji}
-                </span>
-                <h2 className="text-lg sm:text-xl font-display font-medium truncate">
-                  {section.name}
-                </h2>
-              </div>
-              <span className="text-xs text-[var(--foreground-muted)] tabular-nums shrink-0">
-                {section.lessons.filter((l) => completed.includes(l.id)).length}
-                {" / "}
-                {section.lessons.length}
-              </span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {section.lessons.map((lesson) => {
-                const lessonOrderIdx = HSK1_LESSONS.findIndex(
-                  (l) => l.id === lesson.id
-                );
-                const isDone = completed.includes(lesson.id);
-                const isLocked = !isDone && lessonOrderIdx > completedCount;
-                const isCurrent =
-                  !isDone && lessonOrderIdx === completedCount;
-                return (
-                  <LessonTile
-                    key={lesson.id}
-                    lesson={lesson}
-                    isDone={isDone}
-                    isLocked={isLocked}
-                    isCurrent={isCurrent}
-                  />
-                );
-              })}
-            </div>
-          </section>
-        ))}
+      {/* HSK level tabs */}
+      <div className="flex items-end gap-1 sm:gap-2 mb-6 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 border-b border-[var(--border)]">
+        {LEVELS.map((lvl) => {
+          const active = lvl === level;
+          const disabled = lvl !== 1;
+          return (
+            <button
+              key={lvl}
+              onClick={() => !disabled && setLevel(lvl)}
+              disabled={disabled}
+              className={cn(
+                "px-3 sm:px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors relative -mb-px",
+                active
+                  ? "text-[var(--green-deep)]"
+                  : disabled
+                    ? "text-[var(--foreground-soft)] cursor-not-allowed"
+                    : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+              )}
+            >
+              HSK {lvl}
+              {active && (
+                <span className="absolute inset-x-2 -bottom-px h-[2px] bg-[var(--green-deep)] rounded-t-full" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Lesson timeline */}
+      {level === 1 ? (
+        <ol className="relative" role="list">
+          {/* Vertical connector line */}
+          <span
+            aria-hidden
+            className="absolute left-[19px] top-6 bottom-6 w-px bg-[var(--border)]"
+          />
+          {HSK1_LESSONS.map((lesson, i) => {
+            const isDone = mounted && completed.includes(lesson.id);
+            const isCurrent =
+              mounted && !isDone && i === completedCount;
+            const isLocked = !isDone && !isCurrent;
+            return (
+              <li key={lesson.id} className="relative">
+                <LessonRow
+                  lesson={lesson}
+                  isDone={isDone}
+                  isCurrent={isCurrent}
+                  isLocked={isLocked}
+                />
+              </li>
+            );
+          })}
+        </ol>
+      ) : (
+        <div className="card p-8 text-center text-[var(--foreground-muted)]">
+          <BookOpen
+            size={28}
+            className="mx-auto mb-3 text-[var(--foreground-soft)]"
+          />
+          <div className="font-display text-xl text-[var(--foreground)] mb-1">
+            HSK {level} — скоро
+          </div>
+          <p className="text-sm">
+            Сейчас в Minzi открыт уровень HSK 1. Остальные уровни добавим в
+            следующих обновлениях.
+          </p>
+        </div>
+      )}
+
+      {/* Bottom CTA banner */}
+      <div className="mt-10 rounded-[var(--radius-lg)] border border-[var(--green-soft)] bg-[var(--bamboo-soft)] p-5 sm:p-6 flex flex-col sm:flex-row items-center gap-5">
+        <div className="hidden sm:flex w-16 h-16 rounded-2xl bg-white border border-[var(--border)] items-center justify-center shrink-0">
+          <BookOpen size={26} className="text-[var(--green-deep)]" />
+        </div>
+        <div className="flex-1 min-w-0 text-center sm:text-left">
+          <div className="font-display text-lg sm:text-xl text-[var(--foreground)] mb-1">
+            Что дальше?
+          </div>
+          <p className="text-sm text-[var(--foreground-muted)] leading-snug">
+            Продолжайте учиться и не забывайте повторять изученное в разделе
+            «Повторение».
+          </p>
+        </div>
+        <Link
+          href="/review"
+          className="btn btn-primary whitespace-nowrap"
+          style={{ background: "var(--green)" }}
+        >
+          К повторению <ArrowRight size={16} />
+        </Link>
       </div>
     </div>
   );
 }
 
-function LessonTile({
+function LessonRow({
   lesson,
   isDone,
-  isLocked,
   isCurrent,
+  isLocked,
 }: {
   lesson: Lesson;
   isDone: boolean;
-  isLocked: boolean;
   isCurrent: boolean;
+  isLocked: boolean;
 }) {
-  const StatusIcon = isDone ? Check : isLocked ? Lock : Play;
-  const statusClasses = isDone
-    ? "bg-[var(--green-soft)] text-[var(--green-deep)] border-[var(--green-soft)]"
-    : isLocked
-      ? "bg-[var(--surface-2)] text-[var(--foreground-soft)] border-[var(--border)]"
-      : "bg-[var(--green-deep)] text-white border-[var(--green-deep)]";
+  const lessonNumber = lesson.index + 1;
+  const node = isDone ? (
+    <span className="relative z-10 w-10 h-10 rounded-full bg-[var(--green)] text-white flex items-center justify-center shadow-sm">
+      <Check size={18} strokeWidth={3} />
+    </span>
+  ) : isCurrent ? (
+    <span className="relative z-10 w-10 h-10 rounded-full bg-[var(--green-deep)] text-white flex items-center justify-center font-medium tabular-nums shadow-sm">
+      {lessonNumber}
+    </span>
+  ) : (
+    <span className="relative z-10 w-10 h-10 rounded-full bg-[var(--surface-2)] border border-[var(--border)] text-[var(--foreground-soft)] flex items-center justify-center text-sm tabular-nums">
+      {lessonNumber}
+    </span>
+  );
 
-  return (
-    <Link
-      href={isLocked ? "#" : `/learn/${lesson.id}`}
-      aria-disabled={isLocked}
-      tabIndex={isLocked ? -1 : 0}
+  const card = (
+    <div
       className={cn(
-        "group relative rounded-2xl border bg-white p-4 flex items-stretch gap-3 transition-all",
-        isLocked
-          ? "border-[var(--border)] opacity-70 cursor-not-allowed"
-          : "border-[var(--border)] hover:shadow-md hover:-translate-y-px",
-        isCurrent && "ring-2 ring-[var(--green-deep)] ring-offset-2 ring-offset-[var(--background)] border-transparent"
+        "flex-1 min-w-0 rounded-2xl border bg-white px-4 sm:px-5 py-4 flex items-center gap-3 sm:gap-4 transition-all",
+        isCurrent
+          ? "border-[var(--green-soft)] bg-[var(--bamboo-soft)] shadow-sm"
+          : isDone
+            ? "border-[var(--border)] hover:shadow-sm"
+            : "border-[var(--border)] opacity-80"
       )}
     >
-      {/* Hanzi block (square, left) */}
-      <div
-        className={cn(
-          "shrink-0 w-20 h-20 rounded-xl flex items-center justify-center text-center",
-          isDone
-            ? "bg-[var(--green-soft)]"
-            : isLocked
-              ? "bg-[var(--surface-2)]"
-              : "bg-gradient-to-br from-[#f7f3e8] to-[#eef4ec]"
+      <div className="flex-1 min-w-0">
+        <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--foreground-soft)] mb-1">
+          Урок {lessonNumber}
+        </div>
+        <div className="hanzi text-lg sm:text-xl tracking-wider text-[var(--foreground)] leading-tight">
+          {lesson.characters.join(" ")}
+        </div>
+        <div className="text-xs text-[var(--foreground-muted)] mt-1">
+          {lesson.characters.length} иероглифов
+          {lesson.title && (
+            <>
+              {" · "}
+              <span className="text-[var(--foreground)]">{lesson.title}</span>
+            </>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        {isDone && <DoneBadge />}
+        {isCurrent && (
+          <span className="btn btn-primary h-10 px-4 text-sm whitespace-nowrap">
+            Продолжить <ArrowRight size={14} />
+          </span>
         )}
-      >
-        <span
+        {isLocked && (
+          <span
+            className="w-10 h-10 rounded-full bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center text-[var(--foreground-soft)]"
+            aria-label="Закрыто"
+          >
+            <Lock size={16} />
+          </span>
+        )}
+        <ChevronRight
+          size={18}
           className={cn(
-            "hanzi leading-none tracking-tight",
-            lesson.characters.length <= 3 ? "text-2xl" : "text-xl",
+            "shrink-0",
             isLocked
               ? "text-[var(--foreground-soft)]"
-              : "text-[var(--foreground)]"
+              : "text-[var(--foreground-muted)]"
           )}
-        >
-          {lesson.characters.join("")}
-        </span>
+        />
       </div>
+    </div>
+  );
 
-      {/* Right column: number + title + status */}
-      <div className="flex-1 min-w-0 flex flex-col justify-between">
-        <div className="min-w-0">
-          <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--foreground-soft)] mb-0.5">
-            Урок {lesson.index + 1}
-          </div>
-          <div className="text-sm font-medium leading-snug truncate">
-            {lesson.title ?? `Урок ${lesson.index + 1}`}
-          </div>
-        </div>
-        <div className="flex items-center justify-between gap-2 mt-2">
-          <span
-            className={cn(
-              "inline-flex items-center justify-center rounded-full border w-7 h-7 shrink-0",
-              statusClasses
-            )}
-            aria-label={
-              isDone ? "Пройден" : isLocked ? "Закрыт" : "Доступен"
-            }
-          >
-            <StatusIcon size={14} strokeWidth={2.5} />
-          </span>
-          {lesson.grammarNote && (
-            <span className="text-[11px] text-[var(--foreground-muted)] truncate min-w-0 text-right">
-              {lesson.grammarNote.title}
-            </span>
-          )}
-        </div>
+  const rowClass =
+    "flex items-stretch gap-4 sm:gap-5 py-2.5 sm:py-3 first:pt-0 last:pb-0";
+  const nodeWrap = (
+    <div className="w-10 shrink-0 flex items-start justify-center pt-3">
+      {node}
+    </div>
+  );
+
+  if (isLocked) {
+    return (
+      <div
+        className={cn(rowClass, "cursor-not-allowed")}
+        aria-disabled="true"
+      >
+        {nodeWrap}
+        {card}
       </div>
+    );
+  }
+  return (
+    <Link
+      href={`/learn/${lesson.id}`}
+      className={cn(rowClass, "group focus:outline-none")}
+    >
+      {nodeWrap}
+      {card}
     </Link>
+  );
+}
+
+function DoneBadge() {
+  return (
+    <div className="hidden sm:flex items-center gap-2">
+      <span className="text-xs px-2.5 py-1 rounded-full bg-[var(--green-soft)] text-[var(--green-deep)] font-medium whitespace-nowrap">
+        Пройдено
+      </span>
+      <span
+        className="w-10 h-10 rounded-full border-[2.5px] border-[var(--green)] text-[var(--green-deep)] flex items-center justify-center text-[10px] font-medium tabular-nums"
+        aria-label="100%"
+      >
+        100%
+      </span>
+    </div>
   );
 }
