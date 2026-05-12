@@ -99,7 +99,8 @@ export function Sidebar() {
               }
             />
             <span className="text-sm font-medium tabular-nums">
-              {mounted ? streak : 0}{" "}
+              {mounted ? streak : 0}
+              {"\u00A0"}
               {pluralRu(mounted ? streak : 0, "день", "дня", "дней")}
             </span>
           </div>
@@ -110,12 +111,12 @@ export function Sidebar() {
           <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--foreground-soft)] mb-1">
             Цель на день
           </div>
-          <div className="flex items-baseline gap-1 mb-2">
+          <div className="flex items-baseline gap-1.5 mb-2">
             <span className="text-sm font-medium tabular-nums">
               {mounted ? dailyMin : 0}
             </span>
-            <span className="text-xs text-[var(--foreground-muted)] tabular-nums">
-              / {DAILY_GOAL_MIN} мин
+            <span className="text-xs text-[var(--foreground-muted)] tabular-nums whitespace-nowrap">
+              /&nbsp;{DAILY_GOAL_MIN}&nbsp;мин
             </span>
           </div>
           <ProgressBar value={dailyMin} max={DAILY_GOAL_MIN} />
