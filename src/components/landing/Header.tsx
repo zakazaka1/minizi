@@ -26,18 +26,25 @@ export function Header() {
             </div>
           </div>
         </Link>
-        <nav className="hidden md:flex items-center gap-6 text-sm text-[var(--foreground-muted)]">
+        <nav className="hidden md:flex items-center gap-6 text-sm text-[var(--foreground-muted)] flex-1 min-w-0">
           {NAV.map((n) => (
-            <a key={n.href} href={n.href} className="hover:text-[var(--foreground)] transition-colors">
+            <a
+              key={n.href}
+              href={n.href}
+              className="whitespace-nowrap hover:text-[var(--foreground)] transition-colors"
+            >
               {n.label}
             </a>
           ))}
         </nav>
-        <div className="ml-auto flex items-center gap-2">
-          <Link href="/learn" className="btn btn-secondary h-10">
+        <div className="ml-auto flex items-center gap-2 shrink-0">
+          <Link href="/learn" className="btn btn-secondary h-10 whitespace-nowrap">
             Войти
           </Link>
-          <Link href="/learn" className="btn btn-primary h-10 hidden sm:inline-flex">
+          <Link
+            href="/learn"
+            className="btn btn-primary h-10 hidden sm:inline-flex whitespace-nowrap"
+          >
             Начать учить правильно
           </Link>
         </div>

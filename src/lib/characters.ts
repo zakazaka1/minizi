@@ -23,6 +23,10 @@ export interface Lesson {
   level: number;
   index: number;
   characters: string[];
+  /** Curated lesson title, e.g. «Знакомство». Falls back to «Урок N» in UI. */
+  title?: string;
+  /** Theme/chapter grouping, e.g. «Основы общения». */
+  theme?: string;
   grammarNote?: {
     title: string;
     body: string;

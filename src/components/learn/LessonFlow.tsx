@@ -108,32 +108,38 @@ export function LessonFlow({ lesson, characters, pool, onExit }: Props) {
             <div className="text-xs uppercase tracking-[0.2em] text-[var(--foreground-soft)]">
               Иероглиф {step.charIdx + 1} из {characters.length}
             </div>
-            <HanziStrokes
-              key={`intro-${c.hanzi}`}
-              hanzi={c.hanzi}
-              size={300}
-              highlightedStrokes={highlighted}
-            />
-            <div className="flex items-center gap-3">
-              <span className="pinyin text-2xl text-[var(--foreground-muted)]">
-                {c.pinyin}
-              </span>
+            <div className="relative">
+              <HanziStrokes
+                key={`intro-${c.hanzi}`}
+                hanzi={c.hanzi}
+                size={300}
+                highlightedStrokes={highlighted}
+              />
               <button
                 onClick={() => speak(c.hanzi)}
-                className="btn btn-ghost h-9 w-9 p-0"
+                className="absolute top-2 right-2 inline-flex items-center justify-center w-9 h-9 rounded-full bg-white border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:shadow-md transition-shadow"
                 aria-label="Произнести"
               >
                 <Volume2 size={16} />
               </button>
             </div>
-            <div className="text-xl font-medium">{meaningRu(c)}</div>
-            <div className="ink-divider w-2/3 my-2" />
+            <div className="flex flex-col items-center gap-1">
+              <div className="pinyin text-2xl text-[var(--foreground-muted)] leading-tight">
+                {c.pinyin}
+              </div>
+              <div className="text-xl font-medium leading-snug max-w-md break-words">
+                {meaningRu(c)}
+              </div>
+            </div>
             {(c.components?.length ?? 0) > 0 && (
-              <Graphemes
-                char={c}
-                selectedIndex={selectedGrapheme}
-                onSelect={(i) => setSelectedGrapheme(i)}
-              />
+              <>
+                <div className="ink-divider w-2/3 my-1" />
+                <Graphemes
+                  char={c}
+                  selectedIndex={selectedGrapheme}
+                  onSelect={(i) => setSelectedGrapheme(i)}
+                />
+              </>
             )}
             <Button onClick={next} size="lg">
               Дальше <ArrowRight size={16} />

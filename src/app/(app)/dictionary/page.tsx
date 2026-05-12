@@ -185,48 +185,50 @@ export default function DictionaryPage() {
                         .filter((i) => i >= 0)
                     : null;
                 return (
-                  <div className="flex flex-col items-center gap-3">
+                  <div className="flex flex-col items-center text-center gap-4">
                     <div className="text-xs uppercase tracking-[0.2em] text-[var(--foreground-soft)]">
                       HSK {picked.level}
                     </div>
-                    {showStrokeOrder ? (
-                      <StrokeAnimation
-                        key={`anim-${picked.hanzi}`}
-                        hanzi={picked.hanzi}
-                        size={220}
-                        autoplay
-                      />
-                    ) : (
-                      <HanziStrokes
-                        key={`static-${picked.hanzi}`}
-                        hanzi={picked.hanzi}
-                        size={220}
-                        highlightedStrokes={highlighted}
-                      />
-                    )}
-                    {!showStrokeOrder && (
-                      <button
-                        type="button"
-                        onClick={() => setShowStrokeOrder(true)}
-                        className="btn btn-secondary h-8 px-3 text-xs"
-                      >
-                        Порядок черт
-                      </button>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <span className="pinyin text-xl text-[var(--foreground-muted)]">
-                        {picked.pinyin}
-                      </span>
+                    <div className="relative">
+                      {showStrokeOrder ? (
+                        <StrokeAnimation
+                          key={`anim-${picked.hanzi}`}
+                          hanzi={picked.hanzi}
+                          size={220}
+                          autoplay
+                        />
+                      ) : (
+                        <HanziStrokes
+                          key={`static-${picked.hanzi}`}
+                          hanzi={picked.hanzi}
+                          size={220}
+                          highlightedStrokes={highlighted}
+                        />
+                      )}
                       <button
                         onClick={() => speak(picked.hanzi)}
-                        className="btn btn-ghost h-8 w-8 p-0"
+                        className="absolute top-2 right-2 inline-flex items-center justify-center w-8 h-8 rounded-full bg-white border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:shadow-md transition-shadow"
                         aria-label="Произнести"
                       >
                         <Volume2 size={14} />
                       </button>
                     </div>
-                    <div className="text-lg font-medium text-center">
-                      {meaningRu(picked)}
+                    {!showStrokeOrder && (
+                      <button
+                        type="button"
+                        onClick={() => setShowStrokeOrder(true)}
+                        className="btn btn-secondary h-8 px-3 text-xs whitespace-nowrap"
+                      >
+                        Порядок черт
+                      </button>
+                    )}
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="pinyin text-xl text-[var(--foreground-muted)] leading-tight">
+                        {picked.pinyin}
+                      </div>
+                      <div className="text-lg font-medium leading-snug max-w-xs break-words">
+                        {meaningRu(picked)}
+                      </div>
                     </div>
                     {(picked.components?.length ?? 0) > 0 && (
                       <Graphemes

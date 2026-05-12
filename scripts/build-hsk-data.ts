@@ -805,6 +805,10 @@ interface Lesson {
   level: number;
   index: number;
   characters: string[];
+  /** Curated lesson title shown on the lesson tile, e.g. «Мини-диалог». */
+  title?: string;
+  /** Theme/chapter grouping for the curriculum, e.g. «Основы общения». */
+  theme?: string;
   grammarNote?: { title: string; body: string; examples?: { hanzi: string; pinyin: string; ru: string }[] };
 }
 
@@ -870,26 +874,32 @@ const HSK1_GRAMMAR_BITS: Lesson["grammarNote"][] = [
  * Characters listed here are pulled to the top of the lesson list; the
  * remaining HSK1 chars fill in afterwards in CSV order.
  */
-const HSK1_CURATED: string[][] = [
-  ["你", "好", "我", "是", "不"], // pronouns + быть/не — мини-диалог
-  ["他", "她", "们", "的", "吗"], // он/она + притяж. + вопр.
-  ["有", "没", "也", "都", "和"], // иметь / тоже / и
-  ["一", "二", "三", "四", "五"], // числа 1–5
-  ["六", "七", "八", "九", "十"], // числа 6–10
-  ["人", "大", "小", "男", "女"], // люди + большой/маленький
-  ["爸", "妈", "哥", "姐", "弟"], // семья
-  ["天", "年", "月", "日", "时"], // время
-  ["上", "下", "里", "中", "外"], // позиция
-  ["这", "那", "哪", "谁", "几"], // указ./вопр.
-  ["来", "去", "到", "回", "走"], // движение
-  ["看", "听", "说", "学", "写"], // действия учения
-  ["吃", "喝", "饭", "茶", "水"], // еда и питьё
-  ["想", "要", "喜", "欢", "爱"], // желание / любовь
-  ["很", "多", "少", "太", "最"], // степень
-  ["开", "关", "买", "卖", "做"], // повседневные действия
-  ["问", "请", "谢", "再", "见"], // вежливость
-  ["前", "后", "左", "右", "对"], // позиция / правильно
-  ["东", "南", "西", "北", "国"], // стороны / страна
+interface CuratedLesson {
+  chars: string[];
+  title: string;
+  theme: string;
+}
+
+const HSK1_CURATED: CuratedLesson[] = [
+  { chars: ["你", "好", "我", "是", "不"], title: "Знакомство", theme: "Основы общения" },
+  { chars: ["他", "她", "们", "的", "吗"], title: "Местоимения", theme: "Основы общения" },
+  { chars: ["有", "没", "也", "都", "和"], title: "Связки и наличие", theme: "Основы общения" },
+  { chars: ["一", "二", "三", "四", "五"], title: "Числа 1–5", theme: "Числа и счёт" },
+  { chars: ["六", "七", "八", "九", "十"], title: "Числа 6–10", theme: "Числа и счёт" },
+  { chars: ["人", "大", "小", "男", "女"], title: "Люди и размер", theme: "Люди и семья" },
+  { chars: ["爸", "妈", "哥", "姐", "弟"], title: "Семья", theme: "Люди и семья" },
+  { chars: ["天", "年", "月", "日", "时"], title: "Время", theme: "Время и место" },
+  { chars: ["上", "下", "里", "中", "外"], title: "Позиция", theme: "Время и место" },
+  { chars: ["这", "那", "哪", "谁", "几"], title: "Это, то, какой", theme: "Время и место" },
+  { chars: ["来", "去", "到", "回", "走"], title: "Движение", theme: "Действия" },
+  { chars: ["看", "听", "说", "学", "写"], title: "Учиться", theme: "Действия" },
+  { chars: ["吃", "喝", "饭", "茶", "水"], title: "Еда и питьё", theme: "Быт" },
+  { chars: ["想", "要", "喜", "欢", "爱"], title: "Желания и чувства", theme: "Быт" },
+  { chars: ["很", "多", "少", "太", "最"], title: "Степень", theme: "Описание" },
+  { chars: ["开", "关", "买", "卖", "做"], title: "Повседневные дела", theme: "Действия" },
+  { chars: ["问", "请", "谢", "再", "见"], title: "Вежливость", theme: "Основы общения" },
+  { chars: ["前", "后", "左", "右", "对"], title: "Направления", theme: "Время и место" },
+  { chars: ["东", "南", "西", "北", "国"], title: "Стороны света", theme: "Время и место" },
 ];
 
 function buildLessons(chars: CharRecord[]): Lesson[] {
@@ -898,35 +908,51 @@ function buildLessons(chars: CharRecord[]): Lesson[] {
   const byHanzi = new Map(hsk1Pool.map((c) => [c.hanzi, c]));
 
   // Pull curated chars first (in curriculum order), skipping any we can't
-  // animate, then append the remaining HSK1 chars in CSV/freq order.
+  // animate. Each curated entry produces one lesson with its hand-picked
+  // title and theme; the remaining HSK1 chars fill in afterwards in 5-char
+  // chunks under a generic «Закрепление» theme so nothing is lost.
   const seen = new Set<string>();
-  const ordered: CharRecord[] = [];
-  for (const lesson of HSK1_CURATED) {
-    for (const h of lesson) {
+  const lessons: Lesson[] = [];
+  let lessonIdx = 0;
+  for (const curated of HSK1_CURATED) {
+    const slice: CharRecord[] = [];
+    for (const h of curated.chars) {
       if (seen.has(h)) continue;
       const c = byHanzi.get(h);
       if (!c) continue;
-      ordered.push(c);
+      slice.push(c);
       seen.add(h);
     }
+    if (slice.length === 0) continue;
+    lessons.push({
+      id: `hsk1-l${String(lessonIdx + 1).padStart(2, "0")}`,
+      level: 1,
+      index: lessonIdx,
+      characters: slice.map((c) => c.hanzi),
+      title: curated.title,
+      theme: curated.theme,
+      grammarNote: HSK1_GRAMMAR_BITS[lessonIdx] ?? undefined,
+    });
+    lessonIdx += 1;
   }
+
+  const remaining: CharRecord[] = [];
   for (const c of hsk1Pool) {
     if (!seen.has(c.hanzi)) {
-      ordered.push(c);
+      remaining.push(c);
       seen.add(c.hanzi);
     }
   }
-
-  const lessons: Lesson[] = [];
-  let lessonIdx = 0;
-  for (let i = 0; i < ordered.length; i += 5) {
-    const slice = ordered.slice(i, i + 5);
+  for (let i = 0; i < remaining.length; i += 5) {
+    const slice = remaining.slice(i, i + 5);
     if (slice.length < 5) break;
     lessons.push({
       id: `hsk1-l${String(lessonIdx + 1).padStart(2, "0")}`,
       level: 1,
       index: lessonIdx,
       characters: slice.map((c) => c.hanzi),
+      title: `Закрепление ${lessonIdx - HSK1_CURATED.length + 1}`,
+      theme: "Закрепление лексики",
       grammarNote: HSK1_GRAMMAR_BITS[lessonIdx] ?? undefined,
     });
     lessonIdx += 1;
