@@ -24,8 +24,15 @@ export default function LessonPage({
 
   const pool = useMemo(
     () =>
+      // Distractors must have a real Russian translation so the multiple-choice
+      // options never leak English text. Limit to HSK1+HSK2 to keep distractors
+      // similar in difficulty.
       ALL_CHARACTERS.filter(
-        (c) => c.level <= 2 && c.meaningPrimary && c.pinyin
+        (c) =>
+          c.level <= 2 &&
+          c.pinyin &&
+          c.meaningsRu &&
+          c.meaningsRu.length > 0
       ),
     []
   );

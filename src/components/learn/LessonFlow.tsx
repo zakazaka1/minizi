@@ -7,6 +7,7 @@ import { StrokeAnimation } from "./StrokeAnimation";
 import { WritingQuiz } from "./WritingQuiz";
 import { PracticeTask } from "./PracticeTask";
 import { Graphemes } from "./Graphemes";
+import { HanziStrokes } from "./HanziStrokes";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Panda } from "@/components/ui/Panda";
@@ -36,6 +37,9 @@ export function LessonFlow({ lesson, characters, pool, onExit }: Props) {
   const totalCharSteps = characters.length * 4; // 4 steps per char
   const totalSteps = totalCharSteps + (lesson.grammarNote ? 1 : 0) + 1;
   const [stepIdx, setStepIdx] = useState(0);
+  // Per-step selected grapheme index → drives the static stroke highlight on
+  // the intro card. Reset whenever we leave the intro step / switch chars.
+  const [selectedGrapheme, setSelectedGrapheme] = useState<number | null>(null);
 
   const step: Step = useMemo(() => {
     if (stepIdx < totalCharSteps) {
@@ -52,7 +56,10 @@ export function LessonFlow({ lesson, characters, pool, onExit }: Props) {
     return { kind: "summary" };
   }, [stepIdx, totalCharSteps, lesson.grammarNote]);
 
-  const next = () => setStepIdx((i) => Math.min(totalSteps - 1, i + 1));
+  const next = () => {
+    setSelectedGrapheme(null);
+    setStepIdx((i) => Math.min(totalSteps - 1, i + 1));
+  };
 
   const finish = () => {
     completeLesson(lesson.id);
@@ -87,45 +94,53 @@ export function LessonFlow({ lesson, characters, pool, onExit }: Props) {
       </div>
 
       {/* Step body */}
-      {step.kind === "intro" && (
-        <Card className="p-8 sm:p-10 flex flex-col items-center text-center gap-5 float-up">
-          <div className="text-xs uppercase tracking-[0.2em] text-[var(--foreground-soft)]">
-            Иероглиф {step.charIdx + 1} из {characters.length}
-          </div>
-          <div className="hanzi text-[10rem] sm:text-[11rem] leading-none mt-2">
-            {characters[step.charIdx].hanzi}
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="pinyin text-2xl text-[var(--foreground-muted)]">
-              {characters[step.charIdx].pinyin}
-            </span>
-            <button
-              onClick={() => speak(characters[step.charIdx].hanzi)}
-              className="btn btn-ghost h-9 w-9 p-0"
-              aria-label="Произнести"
-            >
-              <Volume2 size={16} />
-            </button>
-          </div>
-          <div className="text-xl font-medium">
-            {meaningRu(characters[step.charIdx])}
-          </div>
-          {characters[step.charIdx].meaningsEn[0] &&
-            characters[step.charIdx].meaningsEn[0] !==
-              meaningRu(characters[step.charIdx]) && (
-              <div className="text-sm text-[var(--foreground-muted)]">
-                {characters[step.charIdx].meaningsEn.slice(0, 2).join(" · ")}
-              </div>
+      {step.kind === "intro" && (() => {
+        const c = characters[step.charIdx];
+        const stc = c.strokeToComponent ?? null;
+        const highlighted =
+          selectedGrapheme !== null && stc
+            ? stc
+                .map((v, i) => (v === selectedGrapheme ? i : -1))
+                .filter((i) => i >= 0)
+            : null;
+        return (
+          <Card className="p-8 sm:p-10 flex flex-col items-center text-center gap-5 float-up">
+            <div className="text-xs uppercase tracking-[0.2em] text-[var(--foreground-soft)]">
+              Иероглиф {step.charIdx + 1} из {characters.length}
+            </div>
+            <HanziStrokes
+              key={`intro-${c.hanzi}`}
+              hanzi={c.hanzi}
+              size={300}
+              highlightedStrokes={highlighted}
+            />
+            <div className="flex items-center gap-3">
+              <span className="pinyin text-2xl text-[var(--foreground-muted)]">
+                {c.pinyin}
+              </span>
+              <button
+                onClick={() => speak(c.hanzi)}
+                className="btn btn-ghost h-9 w-9 p-0"
+                aria-label="Произнести"
+              >
+                <Volume2 size={16} />
+              </button>
+            </div>
+            <div className="text-xl font-medium">{meaningRu(c)}</div>
+            <div className="ink-divider w-2/3 my-2" />
+            {(c.components?.length ?? 0) > 0 && (
+              <Graphemes
+                char={c}
+                selectedIndex={selectedGrapheme}
+                onSelect={(i) => setSelectedGrapheme(i)}
+              />
             )}
-          <div className="ink-divider w-2/3 my-2" />
-          {(characters[step.charIdx].components?.length ?? 0) > 0 && (
-            <Graphemes char={characters[step.charIdx]} />
-          )}
-          <Button onClick={next} size="lg">
-            Дальше <ArrowRight size={16} />
-          </Button>
-        </Card>
-      )}
+            <Button onClick={next} size="lg">
+              Дальше <ArrowRight size={16} />
+            </Button>
+          </Card>
+        );
+      })()}
 
       {step.kind === "stroke" && (
         <Card className="p-8 sm:p-10 flex flex-col items-center gap-6 float-up">

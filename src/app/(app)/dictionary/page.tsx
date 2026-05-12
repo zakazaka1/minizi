@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/Card";
 import { Star, Search, Volume2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { StrokeAnimation } from "@/components/learn/StrokeAnimation";
+import { HanziStrokes } from "@/components/learn/HanziStrokes";
 import { Graphemes } from "@/components/learn/Graphemes";
 
 const FILTERS: { key: string; label: string; level?: number }[] = [
@@ -27,6 +28,8 @@ export default function DictionaryPage() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("1");
   const [picked, setPicked] = useState<CharRecord | null>(null);
+  const [showStrokeOrder, setShowStrokeOrder] = useState(false);
+  const [selectedGrapheme, setSelectedGrapheme] = useState<number | null>(null);
 
   const charsState = useProgress((s) => s.chars);
   const toggleFav = useProgress((s) => s.toggleFavorite);
@@ -117,7 +120,11 @@ export default function DictionaryPage() {
             return (
               <button
                 key={c.hanzi}
-                onClick={() => setPicked(c)}
+                onClick={() => {
+                  setPicked(c);
+                  setShowStrokeOrder(false);
+                  setSelectedGrapheme(null);
+                }}
                 className={cn(
                   "card-soft px-4 py-3 flex items-center gap-4 text-left hover:shadow-md transition-shadow",
                   picked?.hanzi === c.hanzi && "ring-1 ring-[var(--green)]"
@@ -169,37 +176,71 @@ export default function DictionaryPage() {
         <div className="hidden lg:block">
           <div className="sticky top-6">
             <Card className="p-6">
-              {picked ? (
-                <div className="flex flex-col items-center gap-3">
-                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--foreground-soft)]">
-                    HSK {picked.level}
-                  </div>
-                  <StrokeAnimation hanzi={picked.hanzi} size={220} autoplay />
-                  <div className="flex items-center gap-2">
-                    <span className="pinyin text-xl text-[var(--foreground-muted)]">
-                      {picked.pinyin}
-                    </span>
-                    <button
-                      onClick={() => speak(picked.hanzi)}
-                      className="btn btn-ghost h-8 w-8 p-0"
-                      aria-label="Произнести"
-                    >
-                      <Volume2 size={14} />
-                    </button>
-                  </div>
-                  <div className="text-lg font-medium text-center">
-                    {meaningRu(picked)}
-                  </div>
-                  {picked.meaningsEn.length > 0 && (
-                    <div className="text-xs text-[var(--foreground-muted)] text-center">
-                      {picked.meaningsEn.slice(0, 4).join(" · ")}
+              {picked ? (() => {
+                const stc = picked.strokeToComponent ?? null;
+                const highlighted =
+                  selectedGrapheme !== null && stc
+                    ? stc
+                        .map((v, i) => (v === selectedGrapheme ? i : -1))
+                        .filter((i) => i >= 0)
+                    : null;
+                return (
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="text-xs uppercase tracking-[0.2em] text-[var(--foreground-soft)]">
+                      HSK {picked.level}
                     </div>
-                  )}
-                  {(picked.components?.length ?? 0) > 0 && (
-                    <Graphemes char={picked} />
-                  )}
-                </div>
-              ) : (
+                    {showStrokeOrder ? (
+                      <StrokeAnimation
+                        key={`anim-${picked.hanzi}`}
+                        hanzi={picked.hanzi}
+                        size={220}
+                        autoplay
+                      />
+                    ) : (
+                      <HanziStrokes
+                        key={`static-${picked.hanzi}`}
+                        hanzi={picked.hanzi}
+                        size={220}
+                        highlightedStrokes={highlighted}
+                      />
+                    )}
+                    {!showStrokeOrder && (
+                      <button
+                        type="button"
+                        onClick={() => setShowStrokeOrder(true)}
+                        className="btn btn-secondary h-8 px-3 text-xs"
+                      >
+                        Порядок черт
+                      </button>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <span className="pinyin text-xl text-[var(--foreground-muted)]">
+                        {picked.pinyin}
+                      </span>
+                      <button
+                        onClick={() => speak(picked.hanzi)}
+                        className="btn btn-ghost h-8 w-8 p-0"
+                        aria-label="Произнести"
+                      >
+                        <Volume2 size={14} />
+                      </button>
+                    </div>
+                    <div className="text-lg font-medium text-center">
+                      {meaningRu(picked)}
+                    </div>
+                    {(picked.components?.length ?? 0) > 0 && (
+                      <Graphemes
+                        char={picked}
+                        selectedIndex={selectedGrapheme}
+                        onSelect={(i) => {
+                          setSelectedGrapheme(i);
+                          if (i !== null) setShowStrokeOrder(false);
+                        }}
+                      />
+                    )}
+                  </div>
+                );
+              })() : (
                 <div className="text-sm text-[var(--foreground-muted)] text-center py-8">
                   Выберите иероглиф слева, чтобы посмотреть детали и порядок
                   черт.

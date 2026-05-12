@@ -143,8 +143,10 @@ export function PracticeTask({ target, pool, kind, onDone }: Props) {
   })();
 
   const renderOption = (c: CharRecord) => {
-    const showAs = kind === "m2h" ? c.hanzi : meaningShort(c);
-    const sub = kind === "m2h" ? c.pinyin : c.hanzi;
+    // For h→m / audio tasks the user picks a *meaning*, so the option must
+    // only show the translated text — never the source hanzi (otherwise the
+    // task is trivial). For m→h the user picks the *character*, so the
+    // option shows hanzi + pinyin but no meaning.
     const state =
       picked === c.hanzi
         ? c.hanzi === correctKey
@@ -157,29 +159,32 @@ export function PracticeTask({ target, pool, kind, onDone }: Props) {
         type="button"
         onClick={() => onPick(c.hanzi)}
         className={cn(
-          "card text-left px-4 py-3 transition-all flex items-center gap-3",
+          "card text-left px-4 py-3 transition-all flex items-center gap-3 min-h-[3.25rem]",
           state === "correct" &&
             "!border-[color:rgba(46,125,79,0.55)] !bg-[var(--green-soft)]",
           state === "wrong" &&
             "!border-[color:rgba(196,58,58,0.5)] !bg-[var(--red-soft)]"
         )}
       >
-        <span
-          className={cn(
-            kind === "m2h" ? "hanzi text-3xl" : "text-base font-medium",
-            "min-w-[2.5rem]"
-          )}
-        >
-          {showAs}
-        </span>
-        <span className="pinyin text-[var(--foreground-muted)] text-sm">
-          {sub}
-        </span>
+        {kind === "m2h" ? (
+          <>
+            <span className="hanzi text-3xl min-w-[2.5rem] text-center shrink-0">
+              {c.hanzi}
+            </span>
+            <span className="pinyin text-[var(--foreground-muted)] text-sm">
+              {c.pinyin}
+            </span>
+          </>
+        ) : (
+          <span className="text-base font-medium leading-snug flex-1">
+            {meaningShort(c)}
+          </span>
+        )}
         {state === "correct" && (
-          <Check className="ml-auto" size={18} stroke="#1f5e3b" />
+          <Check className="ml-auto shrink-0" size={18} stroke="#1f5e3b" />
         )}
         {state === "wrong" && (
-          <X className="ml-auto" size={18} stroke="#9c2828" />
+          <X className="ml-auto shrink-0" size={18} stroke="#9c2828" />
         )}
       </button>
     );

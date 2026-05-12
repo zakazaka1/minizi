@@ -14,6 +14,8 @@ export interface CharRecord {
   components?: string[];
   radical?: string;
   etymology?: string;
+  /** Per-stroke component index — for grapheme→stroke highlight. */
+  strokeToComponent?: number[];
 }
 
 export interface Lesson {
@@ -42,10 +44,22 @@ export function getLesson(id: string): Lesson | undefined {
   return HSK1_LESSONS.find((l) => l.id === id);
 }
 
-/** Russian display meaning, falls back to English. */
+/**
+ * Returns the Russian display meaning for a character. Returns an empty
+ * string when no Russian translation exists — callers should treat that as
+ * "no meaning available" rather than silently falling back to English.
+ */
 export function meaningRu(c: CharRecord): string {
-  if (c.meaningPrimary) return c.meaningPrimary;
-  return c.meaningsEn[0] ?? "";
+  if (c.meaningsRu && c.meaningsRu.length > 0) return c.meaningsRu[0];
+  if (c.meaningPrimary && /[\u0400-\u04FF]/.test(c.meaningPrimary)) {
+    return c.meaningPrimary;
+  }
+  return "";
+}
+
+/** True when the character has a usable Russian meaning. */
+export function hasRu(c: CharRecord): boolean {
+  return Boolean(meaningRu(c));
 }
 
 /**
@@ -56,12 +70,18 @@ export function meaningRu(c: CharRecord): string {
 export function meaningShort(c: CharRecord): string {
   const raw = meaningRu(c);
   if (!raw) return "";
-  // Strip leading parenthetical qualifiers like "(sentence-final particle) X"
-  const stripped = raw.replace(/^\([^)]*\)\s*/u, "").trim() || raw;
-  // Cut at first semicolon / slash / comma — keep the first sense only.
-  const m = stripped.split(/[;／/]/, 1)[0];
-  // Cap length so options stay tidy.
-  return m.length > 60 ? m.slice(0, 57).trimEnd() + "…" : m;
+  let s = raw;
+  // Drop CEDICT cross-reference annotations: `[pin1 yin1]` and CJK refs
+  // like `十干[shi2 tian1 gan1]` or trailing `→ 字`.
+  s = s.replace(/\[[^\]]*\]/g, "");
+  s = s.replace(/[\u3400-\u9fff]+/g, "");
+  // Drop leading parenthetical qualifiers like "(sentence-final particle) X"
+  s = s.replace(/^\s*\([^)]*\)\s*/u, "");
+  // Cut at first semicolon / slash to keep a single sense.
+  s = s.split(/[;／/]/, 1)[0];
+  s = s.replace(/\s+/g, " ").trim();
+  if (!s) return raw.split(/[;／/]/, 1)[0].trim();
+  return s.length > 36 ? s.slice(0, 33).trimEnd() + "…" : s;
 }
 
 /** Returns all chars in a given HSK level. */
